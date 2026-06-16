@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 96" role="img" aria-label="Timbuktu Farming (white)">
+  <g>
+    <circle cx="48" cy="48" r="44" fill="#FFFFFF"/>
+    <path d="M32 56c13-2.4 22.1-12.2 24-27 3.1 14.6-5.2 31.6-24.6 35.4-6.3 1.2-11.5.2-15.7-2.2 3.2-2.4 7.3-4.5 16.3-6.2z" fill="#0B1F3A" opacity="0.95"/>
+    <path d="M35 38c6.1-5.1 12-7.8 18-8.4-2.6 6.5-6.7 12-12.6 16.4-2.9 2.2-6.2 4-9.9 5.3.2-4.8 1.6-9.5 4.5-13.3z" fill="#0B1F3A" opacity="0.9"/>
+  </g>
+  <g transform="translate(112,28)" fill="#FFFFFF">
+    <text x="0" y="18" font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif" font-size="26" font-weight="700" letter-spacing="-0.3">Timbuktu</text>
+    <text x="0" y="44" font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif" font-size="22" font-weight="600" opacity="0.92" letter-spacing="-0.2">Farming</text>
+    <text x="0" y="64" font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif" font-size="12" font-weight="500" opacity="0.82">Premium Agricultural Products Worldwide</text>
+  </g>
+</svg>
