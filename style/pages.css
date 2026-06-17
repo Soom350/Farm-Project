@@ -414,6 +414,7 @@ body#top .blogs--wix {
     --wix-green: #1f4337;
     --wix-beige: #cdc1b5;
     --wix-orange: #f58a45;
+    --wix-white: #ffffff;
 }
 
 body.page--blog main.page-main {
@@ -437,7 +438,7 @@ body.page--blog main.page-main > .container {
     justify-content: space-between;
     gap: 20px;
     padding: 18px clamp(20px, 7vw, 90px) 22px;
-    background: var(--wix-green);
+    background: var(--wix-white);
 }
 
 .blog-index__nav {
@@ -472,7 +473,7 @@ body.page--blog main.page-main > .container {
     height: 36px;
     border: 0;
     background: transparent;
-    color: #fff;
+    color:var(--wix-orange);
     font-size: 1rem;
     cursor: pointer;
 }

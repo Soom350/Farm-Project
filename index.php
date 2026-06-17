@@ -569,7 +569,5 @@ require_once __DIR__ . '/lib_blog.php';
     <div class="wix-side-badge" aria-hidden="true">STORE</div>
     <button class="wix-chat-fab" type="button" aria-label="Open chat">💬</button>
     <script src="script.js" defer></script>
-    <!-- <script src="services.js"></script> -->
-    <!-- <script src="shop.js"></script> -->
 </body>
 </html>
