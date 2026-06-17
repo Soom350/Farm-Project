@@ -31,6 +31,7 @@ if ($cart['qty_total'] <= 0) {
 
 $countries = checkout_countries();
 $shippingMethods = checkout_shipping_methods();
+$stripeActive = stripe_is_active();
 
 $errors = [];
 $values = [
@@ -118,7 +119,10 @@ if (is_post()) {
     if (!in_array($pm, ['card', 'bank_transfer', 'wallet'], true)) {
         $errors['payment_method'] = 'Invalid payment method.';
     }
-    if ($pm === 'card') {
+    if (plugin_is_enabled('stripe') && !stripe_is_configured() && stripe_payment_uses_checkout($pm)) {
+        $errors['payment_method'] = 'Stripe est active mais non configure (copiez .env.example vers .env).';
+    }
+    if ($pm === 'card' && !$stripeActive) {
         if (!preg_match('/^\d{4}$/', $values['card_last4'])) {
             $errors['card_last4'] = 'Last 4 digits required.';
         }
@@ -144,9 +148,10 @@ if (is_post()) {
         $totals = checkout_compute_totals($values);
 
         $orderRef = 'TF-' . strtoupper(bin2hex(random_bytes(4))) . '-' . date('YmdHis');
+        $useStripe = $stripeActive && stripe_payment_uses_checkout($pm);
         $status = 'processing';
-        if ($pm === 'bank_transfer') $status = 'pending_payment';
-        if ($pm === 'card' || $pm === 'wallet') $status = 'paid';
+        if ($pm === 'bank_transfer' || $useStripe) $status = 'pending_payment';
+        if (($pm === 'card' || $pm === 'wallet') && !$useStripe) $status = 'paid';
 
         $order = [
             'order_ref' => $orderRef,
@@ -183,7 +188,7 @@ if (is_post()) {
             ],
             'payment' => [
                 'method' => $pm,
-                'card_last4' => $pm === 'card' ? $values['card_last4'] : null,
+                'card_last4' => ($pm === 'card' && !$useStripe) ? $values['card_last4'] : null,
             ],
             'legal' => [
                 'accept_terms' => true,
@@ -251,7 +256,7 @@ if (is_post()) {
                 ':dm' => (string)$values['shipping_method'],
                 ':dd' => (string)$order['delivery']['estimate_days'],
                 ':pm' => (string)$pm,
-                ':last4' => $pm === 'card' ? (string)$values['card_last4'] : null,
+                ':last4' => ($pm === 'card' && !$useStripe) ? (string)$values['card_last4'] : null,
                 ':created_at' => (string)$order['created_at'],
             ]);
             $orderId = (int)$pdo->lastInsertId();
@@ -307,8 +312,32 @@ if (is_post()) {
             // Continue to the standard render at the bottom (with $errors).
         }
 
+        if (!isset($errors['order']) && !empty($useStripe)) {
+            $session = stripe_create_checkout_session(
+                [
+                    'order_ref' => $orderRef,
+                    'user_id' => (int)($u['id'] ?? 0),
+                    'customer_email' => (string)$values['customer_email'],
+                ],
+                $totals,
+                app_url('stripe-success.php') . '?session_id={CHECKOUT_SESSION_ID}',
+                app_url('checkout.php')
+            );
+
+            if (is_array($session) && !empty($session['url']) && !empty($session['id'])) {
+                $pdo->prepare('UPDATE orders SET stripe_checkout_session_id = :sid WHERE id = :id')
+                    ->execute([
+                        ':sid' => (string)$session['id'],
+                        ':id' => $orderId,
+                    ]);
+                redirect((string)$session['url']);
+            }
+
+            $errors['payment'] = 'Impossible de creer la session Stripe. Verifiez vos cles API.';
+        }
+
         // Keep a "flash" copy for the confirmation page (without reading DB)
-        if (!isset($errors['order'])) {
+        if (!isset($errors['order']) && empty($useStripe)) {
             // Confirmation email (demo: written in data/mail.log)
             $body = "Thank you for your order.\n\nReference: {$orderRef}\nTotal: " . money((float)$totals['total'], (string)$totals['currency']) . "\nStatus: {$status}\n";
             send_email((string)($u['email'] ?? ''), 'Order confirmation ' . $orderRef, $body);
@@ -317,11 +346,11 @@ if (is_post()) {
         }
 
         // In production: reserve stock / decrement according to strategy.
-        if (!isset($errors['order'])) {
+        if (!isset($errors['order']) && empty($useStripe)) {
             cart_clear();
         }
 
-        if (!isset($errors['order'])) {
+        if (!isset($errors['order']) && empty($useStripe)) {
             redirect(url_with_params('order-confirmation.php', ['order' => $orderRef]));
         }
     }
@@ -358,6 +387,13 @@ require __DIR__ . '/layout_top.php';
         <article class="service-card">
             <div class="service-card__body">
                 <h2 class="service-card__title">Informations et paiement</h2>
+
+                <?php $checkoutFlashError = flash_get('error'); ?>
+                <?php if ($checkoutFlashError): ?>
+                    <div class="alert alert--error" role="alert">
+                        <div class="alert__title"><?= h($checkoutFlashError) ?></div>
+                    </div>
+                <?php endif; ?>
 
                 <?php if (count($errors)): ?>
                     <div class="alert alert--error" role="alert" aria-label="Validation errors">
@@ -490,16 +526,22 @@ require __DIR__ . '/layout_top.php';
                             <div class="field">
                                 <label for="payment_method">Paiement</label>
                                 <select class="form-control" id="payment_method" name="payment_method" required>
-                                    <option value="card" <?= $values['payment_method'] === 'card' ? 'selected' : '' ?>>Carte</option>
-                                    <option value="wallet" <?= $values['payment_method'] === 'wallet' ? 'selected' : '' ?>>Wallet</option>
+                                    <option value="card" <?= $values['payment_method'] === 'card' ? 'selected' : '' ?>>Carte<?= $stripeActive ? ' (Stripe)' : '' ?></option>
+                                    <option value="wallet" <?= $values['payment_method'] === 'wallet' ? 'selected' : '' ?>>Wallet<?= $stripeActive ? ' (Stripe)' : '' ?></option>
                                     <option value="bank_transfer" <?= $values['payment_method'] === 'bank_transfer' ? 'selected' : '' ?>>Virement bancaire</option>
                                 </select>
                             </div>
+                            <?php if ($stripeActive): ?>
+                                <div class="field">
+                                    <p class="form-help">Le paiement carte/wallet est securise via Stripe Checkout (redirection).</p>
+                                </div>
+                            <?php else: ?>
                             <div class="field">
                                 <label for="card_last4">Carte: 4 derniers chiffres (si carte)</label>
                                 <input class="form-control form-control--sm" id="card_last4" name="card_last4" type="text" inputmode="numeric" maxlength="4" value="<?= h($values['card_last4']) ?>" placeholder="1234">
                                 <div class="form-help">Astuce: entrez "0000" pour simuler un refus.</div>
                             </div>
+                            <?php endif; ?>
                         </div>
                     </fieldset>
 

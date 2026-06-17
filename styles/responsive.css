@@ -663,6 +663,200 @@ body#top .farm-gallery__inner img {
   object-fit: cover;
 }
 
+/* Parallax band between About and Products */
+body#top .home-parallax {
+  position: relative;
+  isolation: isolate;
+  min-height: 140vh;
+}
+
+body#top .home-parallax__bg {
+  position: sticky;
+  top: 0;
+  z-index: 0;
+  width: 100%;
+  height: 115vh;
+  height: 115dvh;
+  margin-bottom: -115vh;
+  margin-bottom: -115dvh;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+body#top .home-parallax__bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgb(12 18 14 / 0.18) 0%,
+    rgb(12 18 14 / 0.05) 42%,
+    rgb(12 18 14 / 0.08) 100%
+  );
+}
+
+body#top .home-parallax__bg img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 42%;
+  transform: scale(1.06);
+}
+
+body#top .home-parallax__content {
+  position: relative;
+  z-index: 1;
+}
+
+body#top .home-parallax .content-subtext {
+  background: transparent;
+  padding-top: clamp(48px, 8vw, 96px);
+  padding-bottom: clamp(24px, 5vw, 48px);
+}
+
+body#top .home-parallax .content-subtext-content {
+  align-items: flex-start;
+  min-height: clamp(320px, 52vh, 520px);
+}
+
+body#top .home-parallax .content-subtext-text {
+  max-width: min(540px, 100%);
+  padding: clamp(24px, 4vw, 36px);
+  background: rgb(243 241 235 / 0.82);
+  border: 1px solid rgb(255 255 255 / 0.45);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 24px 60px rgb(15 23 20 / 0.18);
+}
+
+body#top .home-parallax .content-subtext-eyebrow,
+body#top .home-parallax .products-eyebrow {
+  margin: 0 0 10px;
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgb(23 54 41 / 0.72);
+}
+
+body#top .home-parallax .content-subtext-text h3 {
+  font-family: var(--font-heading);
+  font-size: clamp(34px, 4.2vw, 56px);
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  color: #173629;
+  margin-bottom: 16px;
+}
+
+body#top .home-parallax .content-subtext-text p {
+  font-family: var(--font-body);
+  font-size: clamp(1rem, 1.35vw, 1.125rem);
+  line-height: 1.75;
+  color: rgb(23 54 41 / 0.88);
+  max-width: none;
+}
+
+body#top .home-parallax .products {
+  margin-top: clamp(-120px, -14vw, -72px);
+  padding-top: clamp(120px, 16vw, 180px);
+  padding-bottom: clamp(56px, 7vw, 88px);
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgb(245 241 232 / 0.18) 8%,
+    rgb(245 241 232 / 0.42) 22%,
+    rgb(205 193 181 / 0.78) 38%,
+    var(--wix-beige) 52%,
+    var(--wix-beige) 100%
+  );
+}
+
+body#top .home-parallax .products-header {
+  max-width: min(720px, 100%);
+  margin-left: clamp(20px, 7vw, 90px);
+  margin-right: auto;
+  margin-bottom: clamp(28px, 4vw, 40px);
+  padding: clamp(20px, 3vw, 28px);
+  background: rgb(243 241 235 / 0.78);
+  border: 1px solid rgb(255 255 255 / 0.42);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 20px 50px rgb(15 23 20 / 0.14);
+}
+
+body#top .home-parallax .products-title {
+  font-family: var(--font-heading);
+  font-size: clamp(36px, 4.5vw, 58px);
+  font-weight: 600;
+  line-height: 1.06;
+  letter-spacing: -0.02em;
+  color: #173629;
+}
+
+body#top .home-parallax .products-lead {
+  margin: 14px 0 0;
+  max-width: 52ch;
+  font-family: var(--font-body);
+  font-size: clamp(1rem, 1.25vw, 1.125rem);
+  line-height: 1.7;
+  color: rgb(23 54 41 / 0.82);
+}
+
+body#top .home-parallax .product {
+  background: rgb(243 241 235 / 0.9);
+  padding: 12px;
+  backdrop-filter: blur(6px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body#top .home-parallax {
+    min-height: 0;
+  }
+
+  body#top .home-parallax__bg {
+    position: relative;
+    height: clamp(320px, 50vh, 460px);
+    margin-bottom: 0;
+  }
+
+  body#top .home-parallax__bg img {
+    transform: none;
+  }
+
+  body#top .home-parallax .content-subtext {
+    background: var(--wix-cream);
+    padding-bottom: clamp(42px, 6vw, 72px);
+  }
+
+  body#top .home-parallax .content-subtext-text {
+    background: transparent;
+    box-shadow: none;
+    border: 0;
+    backdrop-filter: none;
+    padding: 0;
+  }
+
+  body#top .home-parallax .products {
+    margin-top: 0;
+    padding-top: clamp(44px, 5vw, 64px);
+    background: var(--wix-beige);
+  }
+
+  body#top .home-parallax .products-header {
+    background: transparent;
+    box-shadow: none;
+    border: 0;
+    backdrop-filter: none;
+    padding: 0 clamp(20px, 7vw, 90px);
+  }
+
+  body#top .home-parallax .product {
+    background: transparent;
+    padding: 0;
+  }
+}
+
 body#top .content-subtext {
   background: var(--wix-cream);
   padding: clamp(42px, 6vw, 72px) 0;

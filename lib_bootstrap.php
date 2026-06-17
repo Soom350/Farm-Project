@@ -196,3 +196,7 @@ function safe_next_url(string $fallback = 'index.php'): string
     return $next;
 }
 
+require_once __DIR__ . '/lib_config.php';
+require_once __DIR__ . '/lib_plugins.php';
+plugin_load_all();
+

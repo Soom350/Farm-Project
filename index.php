@@ -1,7 +1,11 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/lib_bootstrap.php';
+require_once __DIR__ . '/lib_auth.php';
 require_once __DIR__ . '/lib_blog.php';
+
+$homeUser = auth_user();
+$homeNext = safe_next_url(current_url_path());
 ?>
 <!DOCTYPE html>
 <html lang="fr" data-page="home">
@@ -58,7 +62,18 @@ require_once __DIR__ . '/lib_blog.php';
                     <li class="nav-item nav-item--join"><a class="nav-link" href="#newsletter">Join CSA</a></li>
                     <li class="nav-item nav-item--blogs"><a class="nav-link" href="blog.php">Blog</a></li>
                     <li class="nav-item nav-item--contact"><a class="nav-link" href="#contact-us">Contact Us</a></li>
-                    <li class="nav-item nav-item--login"><a href="#" class="nav-link login-link" data-login-open><i class="fas fa-user" aria-hidden="true"></i>Log In</a></li>
+                    <li class="nav-item nav-item--account"><a class="nav-link" href="<?= h(app_url('account.php')) ?>"><i class="fas fa-user" aria-hidden="true"></i> My Account</a></li>
+                    <?php if ($homeUser): ?>
+                        <li class="nav-item nav-item--logout">
+                            <form method="post" action="<?= h(app_url('auth/logout.php')) ?>" class="form-inline">
+                                <input type="hidden" name="_csrf" value="<?= h(csrf_token()) ?>">
+                                <button class="nav-link nav-link--button" type="submit">Log Out</button>
+                            </form>
+                        </li>
+                    <?php else: ?>
+                        <li class="nav-item nav-item--login"><a class="nav-link" href="<?= h(url_with_params(app_url('auth/login.php'), ['next' => $homeNext])) ?>">Log In</a></li>
+                        <li class="nav-item nav-item--signup"><a class="nav-link" href="<?= h(url_with_params(app_url('auth/signup.php'), ['next' => $homeNext])) ?>">Sign Up</a></li>
+                    <?php endif; ?>
                 </ul>
             </nav>
         </div>
@@ -69,14 +84,13 @@ require_once __DIR__ . '/lib_blog.php';
                     <div class="signup-dialog-content">
                         <img class="dialog-brand" src="assets/logo/logo-icon.svg" alt="" aria-hidden="true" width="44" height="44" loading="lazy">
                         <h2 id="signup-title">Creer un compte</h2>
-                        <?php $authNext = safe_next_url(current_url_path()); ?>
                         <?php $flashInfo = flash_get('info'); ?>
                         <?php if ($flashInfo): ?>
                             <p class="footer-muted"><?= h($flashInfo) ?></p>
                         <?php endif; ?>
                         <form class="signup-form" action="auth/signup.php" method="post">
                             <input type="hidden" name="_csrf" value="<?= h(csrf_token()) ?>">
-                            <input type="hidden" name="next" value="<?= h($authNext) ?>">
+                            <input type="hidden" name="next" value="<?= h($homeNext) ?>">
                             <label class="sr-only" for="signup-firstName">Prenom</label>
                             <input class="form-control" id="signup-firstName" name="firstName" type="text" placeholder="Prenom" autocomplete="given-name" required>
 
@@ -119,7 +133,7 @@ require_once __DIR__ . '/lib_blog.php';
                     <h2 id="login-title">Connexion</h2>
                     <form class="login-form" action="auth/login.php" method="post">
                         <input type="hidden" name="_csrf" value="<?= h(csrf_token()) ?>">
-                        <input type="hidden" name="next" value="<?= h($authNext) ?>">
+                        <input type="hidden" name="next" value="<?= h($homeNext) ?>">
                         <label class="sr-only" for="login-email">Email</label>
                         <input class="form-control" id="login-email" name="email" type="email" placeholder="Email" autocomplete="email" required>
                         <label class="sr-only" for="login-password">Mot de passe</label>
@@ -149,19 +163,21 @@ require_once __DIR__ . '/lib_blog.php';
             </div>
         </section>
 
+        <div class="home-parallax">
+            <div class="home-parallax__bg" aria-hidden="true">
+                <img src="image/parallax-farming.jpg" alt="" loading="lazy" decoding="async" width="1920" height="1280">
+            </div>
+            <div class="home-parallax__content">
         <section class="content-subtext" id="about" aria-label="About Timbuktu Farming">
             <div class="content-subtext-content">
                 <div class="content-subtext-text">
+                    <p class="content-subtext-eyebrow">Notre engagement</p>
                     <h3>Support Sustainable Farming</h3>
                     <p>
-                        I'm a paragraph. Click here to add your own text and edit me. It's easy. Just click "Edit Text"
-                        or double click me to add your own content and make changes to the font. I'm a great place for
-                        you to tell a story and let your users know a little more about you.
+                        Nous travaillons avec des producteurs locaux pour une agriculture durable, des recoltes
+                        tracees et une chaine courte entre la ferme et votre table.
                     </p>
                     <a href="#products" class="btn btn--primary">Join Our CSA</a>
-                </div>
-                <div class="content-subtext-media">
-                    <img src="assets/logo/logo-icon.svg" alt="Farm illustration" loading="lazy" decoding="async" width="260" height="260">
                 </div>
             </div>
         </section>
@@ -344,7 +360,9 @@ require_once __DIR__ . '/lib_blog.php';
 
         <section class="products" id="products" aria-label="Shop produce">
             <div class="products-header">
+                <p class="products-eyebrow">Du champ au panier</p>
                 <h2 class="products-title">Shop Season's Produce</h2>
+                <p class="products-lead">Produits de saison selectionnes, disponibles en ligne chaque semaine.</p>
             </div>
 
             <div class="products-carousel products-carousel--grid" aria-label="Products">
@@ -476,6 +494,8 @@ require_once __DIR__ . '/lib_blog.php';
                 <a class="btn btn--primary" href="<?= h(app_url('products.php')) ?>">Order Online</a>
             </div>
         </section>
+            </div>
+        </div>
         <!-- Product modal (accessible) -->
         <div class="modal" id="product-modal" role="dialog" aria-modal="true" aria-labelledby="product-modal-title" hidden>
             <div class="modal__panel" id="product-modal-panel" role="document">

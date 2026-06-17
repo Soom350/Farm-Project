@@ -1,0 +1,5 @@
+.env
+data/*.sqlite
+.data/uploads/
+data/mail.log
+vendor/

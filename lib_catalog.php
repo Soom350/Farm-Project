@@ -61,7 +61,7 @@ function catalog_category_by_slug(string $slug): ?array
     return null;
 }
 
-function catalog_products(): array
+function catalog_products_seed(): array
 {
     // NB: images existantes dans le repo.
     return [
@@ -228,10 +228,79 @@ function catalog_products(): array
     ];
 }
 
+function catalog_json_decode_list(?string $json): array
+{
+    if ($json === null || $json === '') return [];
+    $data = json_decode($json, true);
+    return is_array($data) ? $data : [];
+}
+
+function catalog_row_to_product(array $row): array
+{
+    return [
+        'id' => (string)($row['product_id'] ?? ''),
+        'sku' => (string)($row['sku'] ?? ''),
+        'name' => (string)($row['name'] ?? ''),
+        'short_description' => (string)($row['short_description'] ?? ''),
+        'description' => (string)($row['description'] ?? ''),
+        'price' => (float)($row['price'] ?? 0),
+        'currency' => (string)($row['currency'] ?? 'USD'),
+        'unit' => (string)($row['unit'] ?? ''),
+        'availability' => (string)($row['availability'] ?? 'in_stock'),
+        'stock_qty' => (int)($row['stock_qty'] ?? 0),
+        'category_slugs' => catalog_json_decode_list($row['category_slugs'] ?? null),
+        'tags' => catalog_json_decode_list($row['tags'] ?? null),
+        'shipping_eligible' => (int)($row['shipping_eligible'] ?? 1) === 1,
+        'weight_kg' => isset($row['weight_kg']) ? (float)$row['weight_kg'] : null,
+        'image' => (string)($row['image'] ?? ''),
+        'specs' => catalog_json_decode_list($row['specs_json'] ?? null),
+        'compliance' => catalog_json_decode_list($row['compliance_json'] ?? null),
+        'status' => (string)($row['status'] ?? 'active'),
+        'db_id' => (int)($row['id'] ?? 0),
+    ];
+}
+
+function catalog_products_from_db(bool $includeInactive = false): array
+{
+    require_once __DIR__ . '/lib_db.php';
+
+    $sql = 'SELECT * FROM products';
+    if (!$includeInactive) {
+        $sql .= " WHERE status = 'active'";
+    }
+    $sql .= ' ORDER BY id ASC';
+
+    $rows = db()->query($sql)->fetchAll();
+    if (!is_array($rows)) return [];
+
+    return array_map('catalog_row_to_product', $rows);
+}
+
+function catalog_products(bool $includeInactive = false): array
+{
+    if (app_frontend_only()) {
+        return catalog_products_seed();
+    }
+
+    return catalog_products_from_db($includeInactive);
+}
+
 function catalog_product_by_sku(string $sku): ?array
 {
     $sku = trim($sku);
-    foreach (catalog_products() as $p) {
+    if ($sku === '') return null;
+
+    if (!app_frontend_only()) {
+        require_once __DIR__ . '/lib_db.php';
+        $stmt = db()->prepare('SELECT * FROM products WHERE sku = :sku LIMIT 1');
+        $stmt->execute([':sku' => $sku]);
+        $row = $stmt->fetch();
+        if (is_array($row)) {
+            return catalog_row_to_product($row);
+        }
+    }
+
+    foreach (catalog_products_seed() as $p) {
         if ($p['sku'] === $sku) return $p;
     }
     return null;
@@ -240,10 +309,178 @@ function catalog_product_by_sku(string $sku): ?array
 function catalog_product_by_id(string $id): ?array
 {
     $id = trim($id);
-    foreach (catalog_products() as $p) {
+    if ($id === '') return null;
+
+    if (!app_frontend_only()) {
+        require_once __DIR__ . '/lib_db.php';
+        $stmt = db()->prepare('SELECT * FROM products WHERE product_id = :id LIMIT 1');
+        $stmt->execute([':id' => $id]);
+        $row = $stmt->fetch();
+        if (is_array($row)) {
+            return catalog_row_to_product($row);
+        }
+    }
+
+    foreach (catalog_products_seed() as $p) {
         if ($p['id'] === $id) return $p;
     }
     return null;
+}
+
+function catalog_availability_options(): array
+{
+    return [
+        'in_stock' => 'En stock',
+        'out_of_stock' => 'Rupture',
+        'backorder' => 'Reapprovisionnement',
+        'preorder' => 'Precommande',
+        'discontinued' => 'Arrete',
+    ];
+}
+
+function catalog_product_status_options(): array
+{
+    return [
+        'active' => 'Actif (visible)',
+        'inactive' => 'Inactif (masque)',
+    ];
+}
+
+function catalog_slugify(string $value): string
+{
+    $value = mb_strtolower(trim($value));
+    $value = (string)preg_replace('/[^a-z0-9]+/', '-', $value);
+    return trim($value, '-') ?: 'product';
+}
+
+function catalog_product_save(array $input): array
+{
+    if (app_frontend_only()) {
+        return ['ok' => false, 'errors' => ['Mode design: enregistrement produit desactive.']];
+    }
+
+    require_once __DIR__ . '/lib_db.php';
+
+    $productId = trim((string)($input['product_id'] ?? ''));
+    $sku = strtoupper(trim((string)($input['sku'] ?? '')));
+    $name = trim((string)($input['name'] ?? ''));
+    $shortDescription = trim((string)($input['short_description'] ?? ''));
+    $description = trim((string)($input['description'] ?? ''));
+    $price = (float)($input['price'] ?? 0);
+    $currency = strtoupper(trim((string)($input['currency'] ?? 'USD')));
+    $unit = trim((string)($input['unit'] ?? ''));
+    $availability = trim((string)($input['availability'] ?? 'in_stock'));
+    $stockQty = max(0, (int)($input['stock_qty'] ?? 0));
+    $status = trim((string)($input['status'] ?? 'active'));
+    $image = trim((string)($input['image'] ?? ''));
+    $weightKg = trim((string)($input['weight_kg'] ?? ''));
+    $shippingEligible = !empty($input['shipping_eligible']);
+
+    $categorySlugs = $input['category_slugs'] ?? [];
+    if (is_string($categorySlugs)) {
+        $categorySlugs = array_values(array_filter(array_map('trim', explode(',', $categorySlugs))));
+    }
+    $tags = $input['tags'] ?? [];
+    if (is_string($tags)) {
+        $tags = array_values(array_filter(array_map('trim', explode(',', $tags))));
+    }
+
+    $errors = [];
+    if ($sku === '') $errors['sku'] = 'SKU requis.';
+    if ($name === '') $errors['name'] = 'Nom requis.';
+    if ($price < 0) $errors['price'] = 'Prix invalide.';
+    if (!isset(catalog_availability_options()[$availability])) $errors['availability'] = 'Disponibilite invalide.';
+    if (!isset(catalog_product_status_options()[$status])) $errors['status'] = 'Statut invalide.';
+
+    if ($errors) return ['ok' => false, 'errors' => $errors];
+
+    $pdo = db();
+    $existing = $productId !== '' ? catalog_product_by_id($productId) : null;
+    if (!$existing && $productId === '') {
+        $productId = 'p-' . bin2hex(random_bytes(4));
+    }
+
+    $stmtCheck = $pdo->prepare('SELECT product_id FROM products WHERE sku = :sku AND product_id != :pid LIMIT 1');
+    $stmtCheck->execute([':sku' => $sku, ':pid' => $productId]);
+    if ($stmtCheck->fetch()) {
+        return ['ok' => false, 'errors' => ['sku' => 'Ce SKU existe deja.']];
+    }
+
+    $now = gmdate('c');
+    $params = [
+        ':sku' => $sku,
+        ':name' => $name,
+        ':short' => $shortDescription,
+        ':desc' => $description,
+        ':price' => $price,
+        ':currency' => $currency,
+        ':unit' => $unit,
+        ':avail' => $availability,
+        ':stock' => $stockQty,
+        ':cats' => json_encode($categorySlugs, JSON_UNESCAPED_UNICODE),
+        ':tags' => json_encode($tags, JSON_UNESCAPED_UNICODE),
+        ':ship' => $shippingEligible ? 1 : 0,
+        ':weight' => $weightKg !== '' ? (float)$weightKg : null,
+        ':image' => $image,
+        ':specs' => json_encode([], JSON_UNESCAPED_UNICODE),
+        ':compliance' => json_encode(['certifications' => ['Quality Control']], JSON_UNESCAPED_UNICODE),
+        ':status' => $status,
+        ':updated' => $now,
+    ];
+
+    if ($existing) {
+        $pdo->prepare("
+            UPDATE products SET
+                sku = :sku, name = :name, short_description = :short, description = :desc,
+                price = :price, currency = :currency, unit = :unit, availability = :avail,
+                stock_qty = :stock, category_slugs = :cats, tags = :tags,
+                shipping_eligible = :ship, weight_kg = :weight, image = :image,
+                specs_json = :specs, compliance_json = :compliance, status = :status,
+                updated_at = :updated
+            WHERE product_id = :pid
+        ")->execute($params + [':pid' => $productId]);
+    } else {
+        $pdo->prepare("
+            INSERT INTO products(
+                product_id, sku, name, short_description, description,
+                price, currency, unit, availability, stock_qty,
+                category_slugs, tags, shipping_eligible, weight_kg, image,
+                specs_json, compliance_json, status, created_at, updated_at
+            ) VALUES (
+                :pid, :sku, :name, :short, :desc,
+                :price, :currency, :unit, :avail, :stock,
+                :cats, :tags, :ship, :weight, :image,
+                :specs, :compliance, :status, :created, :updated
+            )
+        ")->execute($params + [
+            ':pid' => $productId,
+            ':created' => $now,
+        ]);
+    }
+
+    return ['ok' => true, 'product_id' => $productId];
+}
+
+function catalog_product_delete(string $productId): array
+{
+    if (app_frontend_only()) {
+        return ['ok' => false, 'errors' => ['Mode design: suppression desactivee.']];
+    }
+
+    $productId = trim($productId);
+    if ($productId === '') {
+        return ['ok' => false, 'errors' => ['Produit introuvable.']];
+    }
+
+    require_once __DIR__ . '/lib_db.php';
+    $stmt = db()->prepare('DELETE FROM products WHERE product_id = :pid');
+    $stmt->execute([':pid' => $productId]);
+
+    if ($stmt->rowCount() === 0) {
+        return ['ok' => false, 'errors' => ['Produit introuvable.']];
+    }
+
+    return ['ok' => true];
 }
 
 function catalog_products_search(array $query): array

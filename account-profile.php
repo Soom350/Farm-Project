@@ -81,7 +81,7 @@ require __DIR__ . '/layout_top.php';
     </header>
 
     <div class="actions mt-2">
-        <a class="btn btn--secondary" href="account.php">Vue d’ensemble</a>
+        <a class="btn btn--secondary" href="account.php">Vue d'ensemble</a>
         <a class="btn btn--primary" href="account-profile.php">Profil</a>
         <a class="btn btn--secondary" href="account-addresses.php">Adresses</a>
         <a class="btn btn--secondary" href="account-orders.php">Commandes</a>

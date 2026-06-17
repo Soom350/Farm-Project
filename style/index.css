@@ -613,6 +613,19 @@ header.site-header > .container:not(body#top main .container){
     text-decoration-color: rgb(var(--color-accent-rgb) / 0.95);
 }
 
+body#top .site-nav .form-inline{
+    margin: 0;
+}
+
+body#top .site-nav .nav-link--button{
+    font: inherit;
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    min-height: 0;
+}
+
 /* Home-only hero container (avoid clipping other pages) */
 body#top main .container{
     /* Fluid height reserves space early → less CLS when fonts/slider paint */
